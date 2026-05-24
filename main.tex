@@ -1,0 +1,423 @@
+\documentclass[UTF8,openany]{ctexbook}
+
+\usepackage[a4paper,margin=2.6cm]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue,
+  citecolor=blue
+}
+
+\lstdefinestyle{cppstyle}{
+  language=C++,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!70!black},
+  commentstyle=\color{green!40!black},
+  stringstyle=\color{red!60!black},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  breaklines=true,
+  tabsize=2,
+  showstringspaces=false
+}
+
+\lstdefinestyle{pythonstyle}{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!70!black},
+  commentstyle=\color{green!40!black},
+  stringstyle=\color{red!60!black},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  breaklines=true,
+  tabsize=2,
+  showstringspaces=false
+}
+
+\lstset{style=cppstyle}
+
+\title{Pythonic C++\\\large 面向 Python 学习者的现代 C++ 入门}
+\author{Pythonic C++ Contributors}
+\date{\today}
+
+\begin{document}
+
+\frontmatter
+\maketitle
+\tableofcontents
+
+\chapter{前言}
+
+许多学生第一次接触编程时学的是 Python。Python 的语法轻、反馈快、生态友好，适合建立编程直觉。但当他们继续学习 C++ 时，常常会遇到一种错位：教材假设读者从未写过程序，于是重新讲变量、分支、循环；可真正让 Python 学习者困惑的，往往不是这些基础控制结构，而是编译、类型、头文件、链接、内存、所有权和工具链。
+
+本书试图从另一个角度讲 C++：不把你当作零基础读者，而是承认你已经会用 Python 思考问题。我们会从你熟悉的概念出发，解释它们在 C++ 世界里的对应物、差异和代价。
+
+这不是一本“C++ Primer 的压缩版”。它更像是一份迁移指南：帮助已经会 Python 的你，把已有经验迁移到现代 C++。
+
+\section*{本书适合谁}
+
+\begin{itemize}[noitemsep]
+  \item 学过 Python，准备学习 C++ 的学生；
+  \item 想从脚本开发进入系统编程、竞赛、游戏、图形、高性能计算或嵌入式方向的学习者；
+  \item 已经能读写 Python，但对 C++ 的编译、链接、内存和工程化感到陌生的人；
+  \item 想理解 Python 与 C++ 混合开发的读者。
+\end{itemize}
+
+\section*{本书不是什么}
+
+本书不会从“什么是变量”开始，也不会把所有 C++ 语法细节按词典顺序铺开。我们会优先讲那些对 Python 学习者最有迁移价值的内容：为什么 C++ 要编译，为什么要区分声明和定义，为什么有引用和指针，为什么对象的生命周期如此重要，以及为什么现代 C++ 强调 RAII、标准库和工具链。
+
+\mainmatter
+
+\chapter{从 Python 脑到 C++ 脑}
+
+\section{学习路线的变化}
+
+Python 倾向于让你先写起来，再在运行时发现问题。C++ 则倾向于在程序运行之前，让编译器尽可能多地检查问题。这种差异会影响你写代码、组织文件、调用库和调试错误的方式。
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Python 经验 & C++ 对应概念 & 迁移重点 \\
+\midrule
+\texttt{list} & \texttt{std::vector} & 连续存储、类型固定、迭代器 \\
+\texttt{dict} & \texttt{std::unordered\_map} & 键值类型、哈希、默认构造 \\
+\texttt{str} & \texttt{std::string} & 字符串对象、编码与所有权 \\
+\texttt{import} & \texttt{\#include} + 链接 & 预处理、编译单元、符号解析 \\
+duck typing & 模板、概念 & 编译期多态 \\
+垃圾回收 & RAII & 生命周期、析构、资源释放 \\
+\texttt{pip} & vcpkg / Conan & 包管理和二进制兼容 \\
+虚拟环境 & 工具链 / 构建目录 & 编译器、标准库、构建配置 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{最重要的心理切换}
+
+学习 C++ 时，Python 学习者最需要完成三次切换：
+
+\begin{enumerate}[noitemsep]
+  \item 从“运行时解释”切换到“编译期检查”；
+  \item 从“对象自动活着”切换到“对象有明确生命周期”；
+  \item 从“一个文件直接运行”切换到“多个编译单元共同构成程序”。
+\end{enumerate}
+
+掌握这三件事后，很多 C++ 概念会变得自然：头文件不再神秘，构造和析构不再像仪式，CMake 也不再只是为了让项目显得复杂。
+
+\chapter{你好，编译器}
+
+\section{Python 的运行和 C++ 的构建}
+
+Python 程序通常可以直接运行：
+
+\begin{lstlisting}[style=pythonstyle]
+print("Hello, Python")
+\end{lstlisting}
+
+C++ 程序需要先被编译成可执行文件：
+
+\begin{lstlisting}[style=cppstyle]
+#include <iostream>
+
+int main() {
+    std::cout << "Hello, C++\n";
+    return 0;
+}
+\end{lstlisting}
+
+你可以把编译器理解为一个非常严格、非常早介入的检查者。它会在程序运行之前检查类型、语法、函数是否存在、头文件是否能找到，以及不同源文件之间的符号能否连接起来。
+
+\section{从脚本到可执行文件}
+
+一个最小的 C++ 构建过程通常包含：
+
+\begin{enumerate}[noitemsep]
+  \item 预处理：处理 \texttt{\#include}、宏等文本级指令；
+  \item 编译：把每个 \texttt{.cpp} 文件变成目标文件；
+  \item 链接：把多个目标文件和库合并成可执行程序。
+\end{enumerate}
+
+Python 的 \texttt{import} 会在运行时加载模块。C++ 的 \texttt{\#include} 不是“导入库”，而是把另一个文件的内容在编译前展开到当前位置。真正把函数实现接起来的步骤，是链接。
+
+\chapter{类型：从灵活到明确}
+
+\section{动态类型和静态类型}
+
+Python 变量像一个标签，可以贴到不同类型的对象上：
+
+\begin{lstlisting}[style=pythonstyle]
+x = 10
+x = "ten"
+\end{lstlisting}
+
+C++ 变量有明确类型，类型决定它能保存什么、占多少内存、支持哪些操作：
+
+\begin{lstlisting}[style=cppstyle]
+int x = 10;
+// x = "ten"; // 编译错误
+\end{lstlisting}
+
+这种限制并不只是麻烦。它让编译器可以提前发现大量错误，也让程序的性能和内存布局更可预测。
+
+\section{auto 不是 Python 变量}
+
+C++ 的 \texttt{auto} 会让编译器根据初始化表达式推断类型：
+
+\begin{lstlisting}[style=cppstyle]
+auto count = 10;        // int
+auto name = "Alice";    // const char*
+\end{lstlisting}
+
+但一旦类型推断完成，变量类型就固定了。\texttt{auto} 不是动态类型，而是“让编译器帮你写出那个静态类型”。
+
+\chapter{容器：list、dict 与标准库}
+
+\section{list 到 vector}
+
+Python 的 \texttt{list} 可以混放不同类型对象：
+
+\begin{lstlisting}[style=pythonstyle]
+items = [1, "two", 3.0]
+\end{lstlisting}
+
+C++ 的 \texttt{std::vector<T>} 是类型固定的动态数组：
+
+\begin{lstlisting}[style=cppstyle]
+#include <vector>
+
+std::vector<int> numbers = {1, 2, 3};
+numbers.push_back(4);
+\end{lstlisting}
+
+\texttt{vector} 的优势是连续存储、缓存友好、性能稳定。代价是你必须提前说明元素类型。
+
+\section{dict 到 unordered\_map}
+
+Python 的字典：
+
+\begin{lstlisting}[style=pythonstyle]
+scores = {"Alice": 95, "Bob": 88}
+print(scores["Alice"])
+\end{lstlisting}
+
+C++ 的哈希表：
+
+\begin{lstlisting}[style=cppstyle]
+#include <string>
+#include <unordered_map>
+
+std::unordered_map<std::string, int> scores{
+    {"Alice", 95},
+    {"Bob", 88}
+};
+
+std::cout << scores["Alice"] << "\n";
+\end{lstlisting}
+
+在 C++ 中，键和值的类型都必须明确。这个要求会让代码略显啰嗦，但也让接口更清楚。
+
+\chapter{函数、值和引用}
+
+\section{传值}
+
+Python 中，变量保存的是对象引用；函数调用时传递的也是对象引用的副本。C++ 中，默认传参是传值：函数得到参数的一份拷贝。
+
+\begin{lstlisting}[style=cppstyle]
+void add_one(int x) {
+    x += 1;
+}
+
+int main() {
+    int n = 1;
+    add_one(n);
+    // n 仍然是 1
+}
+\end{lstlisting}
+
+\section{引用}
+
+如果希望函数修改外部对象，可以使用引用：
+
+\begin{lstlisting}[style=cppstyle]
+void add_one(int& x) {
+    x += 1;
+}
+\end{lstlisting}
+
+引用可以理解为一个已经绑定到对象的别名。对 Python 学习者来说，它很像“函数拿到了原对象本身”，但 C++ 的引用有更严格的类型和生命周期规则。
+
+\chapter{内存、生命周期与 RAII}
+
+\section{为什么 C++ 总谈生命周期}
+
+Python 通过垃圾回收和引用计数管理对象。大多数时候，你不需要关心对象何时释放。C++ 则把对象生命周期放在语言核心：对象什么时候构造、什么时候析构，通常是确定的。
+
+\begin{lstlisting}[style=cppstyle]
+#include <fstream>
+
+void write_log() {
+    std::ofstream file("log.txt");
+    file << "hello\n";
+} // file 离开作用域，析构函数自动关闭文件
+\end{lstlisting}
+
+这就是 RAII：资源获取即初始化。文件、锁、内存、网络连接都可以绑定到对象生命周期上。对象离开作用域时，析构函数自动释放资源。
+
+\section{少用裸 new}
+
+现代 C++ 不鼓励到处手写 \texttt{new} 和 \texttt{delete}。你应该优先使用标准库容器和智能指针：
+
+\begin{lstlisting}[style=cppstyle]
+#include <memory>
+
+auto p = std::make_unique<int>(42);
+\end{lstlisting}
+
+\chapter{类：从 Python class 到 C++ class}
+
+\section{类的接口和实现}
+
+Python 类通常写在一个文件里。C++ 项目中，类经常拆成头文件和源文件：
+
+\begin{lstlisting}[style=cppstyle]
+// student.hpp
+#pragma once
+#include <string>
+
+class Student {
+public:
+    Student(std::string name, int score);
+    int score() const;
+
+private:
+    std::string name_;
+    int score_;
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cppstyle]
+// student.cpp
+#include "student.hpp"
+#include <utility>
+
+Student::Student(std::string name, int score)
+    : name_(std::move(name)), score_(score) {}
+
+int Student::score() const {
+    return score_;
+}
+\end{lstlisting}
+
+头文件更像“承诺”：告诉其他编译单元这个类长什么样、有哪些接口。源文件则提供具体实现。
+
+\chapter{模板：编译期的 duck typing}
+
+\section{从 duck typing 到模板}
+
+Python 中，只要对象支持某个操作，就可以传给函数：
+
+\begin{lstlisting}[style=pythonstyle]
+def twice(x):
+    return x + x
+\end{lstlisting}
+
+C++ 模板也有类似味道，但检查发生在编译期：
+
+\begin{lstlisting}[style=cppstyle]
+template <typename T>
+T twice(const T& x) {
+    return x + x;
+}
+\end{lstlisting}
+
+如果某个类型不支持 \texttt{+}，编译器会报错。模板让 C++ 在保持静态类型的同时获得泛型能力。
+
+\chapter{现代 C++ 工具链}
+
+\section{一个推荐起点}
+
+学习现代 C++ 时，建议尽早建立工程化环境：
+
+\begin{itemize}[noitemsep]
+  \item 编译器：GCC、Clang 或 MSVC；
+  \item 构建系统：CMake；
+  \item 编辑器支持：VS Code + clangd；
+  \item 测试框架：Catch2、doctest 或 GoogleTest；
+  \item 包管理：vcpkg 或 Conan；
+  \item 持续集成：GitHub Actions。
+\end{itemize}
+
+\section{最小 CMake 项目}
+
+\begin{lstlisting}
+cmake_minimum_required(VERSION 3.20)
+project(hello_cpp LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_executable(hello main.cpp)
+\end{lstlisting}
+
+CMake 不是 C++ 语言的一部分，但它解决了现实问题：源文件如何组织，编译选项如何传递，第三方库如何接入，不同平台如何使用同一套构建描述。
+
+\chapter{Python 与 C++ 混合工程}
+
+\section{为什么混合}
+
+Python 适合快速表达业务逻辑、数据处理和实验流程；C++ 适合写性能敏感、资源敏感或需要系统接口的核心模块。混合工程常见于科学计算、机器学习、仿真、图形、游戏和高性能服务。
+
+\section{pybind11 的基本形态}
+
+\begin{lstlisting}[style=cppstyle]
+#include <pybind11/pybind11.h>
+
+int add(int a, int b) {
+    return a + b;
+}
+
+PYBIND11_MODULE(example, m) {
+    m.def("add", &add);
+}
+\end{lstlisting}
+
+编译后，Python 可以像导入普通模块一样导入这个 C++ 扩展：
+
+\begin{lstlisting}[style=pythonstyle]
+import example
+
+print(example.add(1, 2))
+\end{lstlisting}
+
+\chapter{练习路线}
+
+\section{迁移式练习}
+
+每学完一个概念，最好的练习不是机械抄语法，而是把一个熟悉的 Python 程序迁移到 C++：
+
+\begin{enumerate}[noitemsep]
+  \item 把 Python 的列表统计程序改写为 \texttt{std::vector} 版本；
+  \item 把词频统计从 \texttt{dict} 改写为 \texttt{std::unordered\_map}；
+  \item 把一个单文件脚本拆成头文件、源文件和 CMake 项目；
+  \item 把一个 Python 类改写为 C++ 类，并区分接口与实现；
+  \item 写一个小型 C++ 函数，用 pybind11 暴露给 Python 调用。
+\end{enumerate}
+
+\backmatter
+
+\chapter{后记}
+
+学 C++ 的困难不只来自语法多，也来自它把很多 Python 替你隐藏起来的东西重新摆到台面上：内存、生命周期、构建、链接、二进制接口、平台差异。理解这些东西并不是退步，而是获得另一种看待程序的能力。
+
+如果你已经会 Python，那么你并不是从零开始。你带着问题抽象、数据结构、函数分解和调试经验进入 C++。本书要做的，就是帮你把这些经验翻译成 C++ 世界里的语言。
+
+\end{document}
